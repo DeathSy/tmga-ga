@@ -1,0 +1,5 @@
+server="54.179.187.112"
+port="27017"
+database="tmgaDB"
+username="tmga-user"
+password="tmga-pass"
