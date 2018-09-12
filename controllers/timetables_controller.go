@@ -12,6 +12,10 @@ func GetTimetable(w http.ResponseWriter, r *http.Request) {
 
 }
 
+func CreateTimeTable(w http.ResponseWriter, r *http.Request) {
+
+}
+
 func DeleteTimetable(w http.ResponseWriter, r *http.Request) {
 
 }
