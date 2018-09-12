@@ -7,22 +7,17 @@ import (
 )
 
 type LecturerRepository struct {
-	Server   string
-	Database string
-	Username string
-	Password string
+	DB *mgo.Database
 }
 
-var db *mgo.Database
-
 const (
-	COLLECTION = "lecturer"
+	COLLECTION = "Lecturer"
 )
 
 func (m *LecturerRepository) FindAll() ([]models.Lecturer, error) {
 	var lecturers []models.Lecturer
 
-	err := db.C(COLLECTION).Find(bson.M{}).All(&lecturers)
+	err := m.DB.C(COLLECTION).Find(bson.M{}).All(&lecturers)
 
 	return lecturers, err
 }
