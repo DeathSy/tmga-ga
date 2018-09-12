@@ -6,6 +6,9 @@ import (
 	"net/http"
 )
 
+func init() {
+}
+
 func main() {
 
 	r := routes.InitRoutes()
