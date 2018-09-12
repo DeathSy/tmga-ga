@@ -1,0 +1,14 @@
+Index: config.toml
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+--- config.toml	(date 1536753261466)
++++ config.toml	(date 1536753261466)
+@@ -0,0 +1,5 @@
++server="54.179.187.112"
++port="27017"
++database="tmgaDB"
++username="tmga-user"
++password="tmga-pass"
+\ No newline at end of file
