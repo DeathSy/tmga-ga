@@ -7,7 +7,7 @@ jobs:
       - run: |
           docker login -u $DOCKER_USER -p $DOCKER_PASS
       - run: |
-          docker image build -t dscythe/tmga-ga
+          docker image build -t dscythe/tmga-ga .
       - run: |
           docker push dscythe/tmga-ga
 
