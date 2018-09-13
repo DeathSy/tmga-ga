@@ -18,3 +18,11 @@ func (r *LecturerRepository) FindAll() ([]models.Lecturer, error) {
 
 	return lecturers, err
 }
+
+func (r *LecturerRepository) Find(id string) (models.Lecturer, error) {
+	var lecturer models.Lecturer
+
+	err := r.DB.C(r.Collection).FindId(bson.ObjectIdHex(id)).One(&lecturer)
+
+	return lecturer, err
+}
