@@ -24,8 +24,10 @@ func GetTimetable(w http.ResponseWriter, r *http.Request) {
 
 func CreateTimeTable(w http.ResponseWriter, r *http.Request) {
 	var response interface{}
+
 	ga := services.Genetic{}
-	ga.PreparingData()
+	ga.Start()
+
 	services.RespondWithJson(w, http.StatusOK, response)
 }
 
