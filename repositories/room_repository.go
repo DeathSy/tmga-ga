@@ -14,11 +14,21 @@ type RoomRepository struct {
 func (r *RoomRepository) FindAll() ([]models.Room, error) {
 	var rooms []models.Room
 
-	err := r.DB.C(r.Collection).Pipe([]bson.M{
-		{"$lookup": bson.M{
-			"from": "SubjectFormat", "localField": "subjectFormatId", "foreignField": "_id", "as": "format"},
+	query := []bson.M{
+		{
+			"$lookup": bson.M{
+				"from":         "SubjectFormat",
+				"localField":   "typeId",
+				"foreignField": "_id",
+				"as":           "type",
+			},
 		},
-	}).All(&rooms)
+		{
+			"$unwind": "$type",
+		},
+	}
+
+	err := r.DB.C(r.Collection).Pipe(query).All(&rooms)
 
 	return rooms, err
 }
