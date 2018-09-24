@@ -13,7 +13,8 @@ type Genetic struct {
 }
 
 type Gene struct {
-	Section availableSec
+	Section  models.Section
+	TimeSlot []availableTime
 }
 
 type Chromosome struct {
@@ -22,18 +23,9 @@ type Chromosome struct {
 }
 
 type availableTime struct {
-	day  string
-	room models.Room
-	time models.TimeSlot
-}
-
-type availableSec struct {
-	Name      string
-	SubjectId string
-	Type      string
-	Lecturers []string
-	TimeUsed  int
-	TimeSlot  []availableTime
+	Day  string          `json:"Day"`
+	Room models.Room     `json:"Room"`
+	Time models.TimeSlot `json:"timeSlot"`
 }
 
 var timeSlotRepo repositories.TimeslotRepository
@@ -46,10 +38,10 @@ var roomData []models.Room
 var timeSlotData []models.TimeSlot
 var sectionData []models.SubjectSection
 
-var roomSlots []availableTime
-var sections []availableSec
-
 var DAYS = []string{"MON", "TUE", "WED", "THU", "FRI"}
+
+var standardGenePattern []Gene
+var roomSlots []availableTime
 
 func init() {
 	initialReposData()
@@ -67,69 +59,152 @@ func initialReposData() {
 
 func (g *Genetic) Start() Chromosome {
 	roomSlots = timePreparation(nil, roomData, DAYS, timeSlotData)
-	sections = sectionPreparation(nil, sectionData)
+	standardGenePattern = sectionPreparation(nil, sectionData)
 
-	adam := fitness(generateChromosome(nil, roomSlots, sections))
-	eve := fitness(generateChromosome(nil, roomSlots, sections))
-
-	fmt.Println("adam gene:", adam.Genes[0])
-	fmt.Println("=======================")
-	fmt.Println("eve gene:", eve.Genes[0])
-	fmt.Println("=======================")
-
-	perfectChromosome := geneticFunction(adam, eve)
-
-	return perfectChromosome
+	return geneticFunction(nil, roomSlots)
 }
 
-func geneticFunction(chromosome1 Chromosome, chromosome2 Chromosome) Chromosome {
-	chromosomeIndex := randArrayIndex(len(chromosome1.Genes))
-
-	crossoveredChro1 := fitness(append(chromosome2.Genes[:chromosomeIndex], chromosome1.Genes[chromosomeIndex+1:]...))
-	crossoveredChro2 := fitness(append(chromosome1.Genes[:chromosomeIndex], chromosome2.Genes[chromosomeIndex+1:]...))
-
-	population := []Chromosome{chromosome1, chromosome2, crossoveredChro1, crossoveredChro2}
-
-	sort.SliceStable(population, func(i, j int) bool {
-		return population[i].Fitness > population[j].Fitness
-	})
-
-	if population[0].Fitness > 0.8 {
-		return population[0]
+func geneticFunction(timetable []Chromosome, roomSlots []availableTime) Chromosome {
+	if timetable != nil && timetable[0].Fitness >= 0.98 {
+		fmt.Println("Final calculateFitness value", timetable[0].Fitness)
+		return timetable[0]
 	}
 
-	round := len(population[0].Genes) * 10 / 100
-	mutatedChromosome := fitness(mutate(population[0], round).Genes)
+	adam := generateChromosome(Chromosome{}, roomSlots)
+	eve := generateChromosome(Chromosome{}, roomSlots)
 
-	population = append(population, mutatedChromosome)
+	timetable = sortPopulation(append(timetable, adam, eve))
 
-	sort.SliceStable(population, func(i, j int) bool {
-		return population[i].Fitness > population[j].Fitness
-	})
+	jack, marry := crossover(timetable[0], timetable[1], randArrayIndex(len(standardGenePattern)))
 
-	if population[0].Fitness > 0.8 {
-		return population[0]
-	}
+	timetable = sortPopulation(append(timetable, jack, marry))
 
-	return geneticFunction(population[0], population[1])
+	newJack := mutate(timetable[0], len(standardGenePattern)*10/100)
+
+	timetable = sortPopulation(append(timetable, newJack))
+
+	//fmt.Println("Max calculateFitness value", timetable[0].Fitness)
+
+	return geneticFunction(timetable, roomSlots)
 }
 
-func fitness(genes []Gene) Chromosome {
-	chromosome := Chromosome{genes, 0}
+func generateChromosome(chromosome Chromosome, roomArray []availableTime) Chromosome {
+	if len(chromosome.Genes) == 0 {
+		chromosome.Genes = append(chromosome.Genes, standardGenePattern...)
+		chromosome.Fitness = 0
+	}
 
-	// todo implement fitness function
+	sectionIndex := randArrayIndex(len(standardGenePattern))
+	roomIndex := randArrayIndex(len(roomArray))
+	if len(chromosome.Genes[sectionIndex].TimeSlot)*30 != chromosome.Genes[sectionIndex].Section.Time {
+		chromosome.Genes[sectionIndex].TimeSlot = append(chromosome.Genes[sectionIndex].TimeSlot, roomArray[roomIndex])
+		roomArray = append(roomArray[:roomIndex], roomArray[roomIndex+1:]...)
+	} else {
+		for _, gene := range chromosome.Genes {
+			if len(gene.TimeSlot)*30 != gene.Section.Time {
+				break
+			}
+
+			return calculateFitness(chromosome)
+		}
+	}
+
+	return generateChromosome(chromosome, roomArray)
+}
+
+func calculateFitness(chromosome Chromosome) Chromosome {
+
+	standardFunction(chromosome)
+	chromosome.Fitness = rand.Float64()
 
 	return chromosome
 }
 
-func mutate(chromosome Chromosome, round int) Chromosome {
-	// todo implement mutation function
+func standardFunction(chromosome Chromosome) Chromosome {
+	timeBaseChromosome := transformToTimeBase(
+		chromosome,
+		convertSliceToMap(map[string][]models.Section{}, roomSlots),
+	)
 
+	fmt.Println(timeBaseChromosome)
+
+	// todo implement standard fitness function
+
+	return chromosome
+}
+
+func transformToTimeBase(chromosome Chromosome, timeMap map[string][]models.Section) map[string][]models.Section {
+	// todo implement transform to Time base
+
+	return timeMap
+}
+
+func crossover(adam Chromosome, eve Chromosome, round int) (Chromosome, Chromosome) {
 	if round == 0 {
-		return chromosome
+		return calculateFitness(adam), calculateFitness(eve)
 	}
 
+	crossingIndex := randArrayIndex(len(standardGenePattern))
+
+	jack := Chromosome{nil, 0}
+	marry := Chromosome{nil, 0}
+
+	jack.Genes = append(
+		append(adam.Genes[:crossingIndex], eve.Genes[crossingIndex]),
+		adam.Genes[crossingIndex+1:]...,
+	)
+	marry.Genes = append(
+		append(eve.Genes[:crossingIndex], adam.Genes[crossingIndex]),
+		eve.Genes[crossingIndex+1:]...,
+	)
+
+	return crossover(jack, marry, round-1)
+}
+
+func mutate(chromosome Chromosome, round int) Chromosome {
+	if round == 0 {
+		return calculateFitness(chromosome)
+	}
+
+	mutationIndex := randArrayIndex(len(standardGenePattern))
+	chromosome.Genes[mutationIndex].TimeSlot = []availableTime{}
+	chromosome.Genes[mutationIndex] = renewGene(chromosome.Genes[mutationIndex])
+
 	return mutate(chromosome, round-1)
+}
+
+func renewGene(gene Gene) Gene {
+	if len(gene.TimeSlot)*30 == gene.Section.Time {
+		return gene
+	}
+
+	roomIndex := randArrayIndex(len(roomSlots))
+	gene.TimeSlot = append(gene.TimeSlot, roomSlots[roomIndex])
+
+	return renewGene(gene)
+}
+
+func randArrayIndex(arraySize int) int {
+	return rand.Intn(arraySize)
+}
+
+func sortPopulation(population []Chromosome) []Chromosome {
+	sort.SliceStable(population, func(i, j int) bool {
+		return population[i].Fitness > population[j].Fitness
+	})
+
+	return population
+}
+
+func convertSliceToMap(result map[string][]models.Section, time []availableTime) map[string][]models.Section {
+	if len(time) == 0 {
+		return result
+	}
+
+	mapKey := time[0].Room.Name + time[0].Day + time[0].Time.Start
+	result[mapKey] = []models.Section{}
+
+	return convertSliceToMap(result, time[1:])
 }
 
 func dataPreparation() ([]models.TimeSlot, []models.Room, []models.SubjectSection) {
@@ -140,59 +215,27 @@ func dataPreparation() ([]models.TimeSlot, []models.Room, []models.SubjectSectio
 	return t, r, sec
 }
 
-func generateChromosome(gene []Gene, roomArray []availableTime, sectionArray []availableSec) []Gene {
-
-	if len(gene) == len(sections) {
-		return gene
-	}
-
-	var roomIndex int = randArrayIndex(len(roomArray))
-	var sectionIndex int = randArrayIndex(len(sectionArray))
-
-	if len(sectionArray[sectionIndex].TimeSlot)*30 == sectionArray[sectionIndex].TimeUsed {
-		gene = append(gene, Gene{sections[sectionIndex]})
-		return generateChromosome(
-			gene,
-			append(roomArray[:roomIndex], roomArray[roomIndex+1:]...),
-			append(sectionArray[:sectionIndex], sectionArray[sectionIndex+1:]...),
-		)
-	}
-
-	sectionArray[sectionIndex].TimeSlot = append(sectionArray[sectionIndex].TimeSlot, roomSlots[roomIndex])
-
-	return generateChromosome(gene, append(roomArray[:roomIndex], roomArray[roomIndex+1:]...), sectionArray)
-
-}
-
-func randArrayIndex(arraySize int) int {
-	return rand.Intn(arraySize)
-}
-
-func sectionPreparation(secs []availableSec, allSections []models.SubjectSection) []availableSec {
-	secs = reorderSec(secs, allSections[0].Sections)
+func sectionPreparation(genes []Gene, allSections []models.SubjectSection) []Gene {
+	genes = reorderSec(genes, allSections[0].Sections)
 
 	if len(allSections) == 1 {
-		return secs
+		return genes
 	}
 
-	return sectionPreparation(secs, allSections[1:])
+	return sectionPreparation(genes, allSections[1:])
 }
 
-func reorderSec(secs []availableSec, sections []models.Section) []availableSec {
-	secs = append(secs, availableSec{
-		sections[0].Name,
-		sections[0].SubjectId,
-		sections[0].Type,
-		sections[0].Lecturers,
-		sections[0].Time,
+func reorderSec(genes []Gene, sections []models.Section) []Gene {
+	genes = append(genes, Gene{
+		sections[0],
 		[]availableTime{},
 	})
 
 	if len(sections) == 1 {
-		return secs
+		return genes
 	}
 
-	return reorderSec(secs, sections[1:])
+	return reorderSec(genes, sections[1:])
 }
 
 func timePreparation(time []availableTime, rooms []models.Room, days []string, slots []models.TimeSlot) []availableTime {
