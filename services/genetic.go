@@ -37,6 +37,7 @@ var sectionRepo repositories.SubjectSectionRepository
 var roomData []models.Room
 var timeSlotData []models.TimeSlot
 var sectionData []models.SubjectSection
+var lecturerData []models.Lecturer
 
 var DAYS = []string{"MON", "TUE", "WED", "THU", "FRI"}
 
@@ -45,7 +46,7 @@ var roomSlots []availableTime
 
 func init() {
 	initialReposData()
-	timeSlotData, roomData, sectionData = dataPreparation()
+	timeSlotData, roomData, sectionData, lecturerData = dataPreparation()
 }
 
 func initialReposData() {
@@ -83,7 +84,7 @@ func geneticFunction(timetable []Chromosome, roomSlots []availableTime) Chromoso
 
 	timetable = sortPopulation(append(timetable, newJack))
 
-	//fmt.Println("Max calculateFitness value", timetable[0].Fitness)
+	fmt.Println("Max calculateFitness value", timetable[0].Fitness)
 
 	return geneticFunction(timetable, roomSlots)
 }
@@ -123,20 +124,78 @@ func calculateFitness(chromosome Chromosome) Chromosome {
 func standardFunction(chromosome Chromosome) Chromosome {
 	timeBaseChromosome := transformToTimeBase(
 		chromosome,
-		convertSliceToMap(map[string][]models.Section{}, roomSlots),
+		convertTimeSliceToMap(map[string][]models.Section{}, roomSlots),
 	)
 
-	fmt.Println(timeBaseChromosome)
+	lecturerBaseChromosome := transformToLectBase(
+		chromosome,
+		convertLecturerSliceToMap(map[string][]availableTime{}, lecturerData),
+	)
 
-	// todo implement standard fitness function
+	var score float64
+	var round int
+
+	timeCheck(score, round, timeBaseChromosome)
+	lecturerCheck(score, round, lecturerBaseChromosome)
+
+	chromosome.Fitness = score / float64(round)
 
 	return chromosome
 }
 
+func timeCheck(score float64, round int, timeBaseChromosome map[string][]models.Section) {
+	for _, timeSlot := range timeBaseChromosome {
+		round += 1
+
+		if len(timeSlot) > 1 {
+			break
+		}
+
+		score += 1
+	}
+}
+
+func lecturerCheck(score float64, round int, lecturerBaseChromosome map[string][]availableTime) {
+	for _, gene := range lecturerBaseChromosome {
+		for index, time := range gene {
+			otherSlot := append(gene[:index], gene[index+1:]...)
+			check := true
+			for _, slot := range otherSlot {
+				case1 := time.Time.Start == slot.Time.Start
+				case2 := time.Day == slot.Day
+				case3 := time.Room.Id == slot.Room.Id
+
+				check = check && !(case1 && case2 && case3)
+			}
+
+			if check {
+				score += 1
+			}
+		}
+	}
+
+	round += 1
+}
+
 func transformToTimeBase(chromosome Chromosome, timeMap map[string][]models.Section) map[string][]models.Section {
-	// todo implement transform to Time base
+	for _, gene := range chromosome.Genes {
+		for _, time := range gene.TimeSlot {
+			key := time.Room.Name + time.Day + time.Time.Start
+			timeMap[key] = append(timeMap[key], gene.Section)
+		}
+	}
 
 	return timeMap
+}
+
+func transformToLectBase(chromosome Chromosome, lecturerMap map[string][]availableTime) map[string][]availableTime {
+	for _, gene := range chromosome.Genes {
+		for _, lecturer := range gene.Section.Lecturers {
+			lecturerMap[lecturer] = append(lecturerMap[lecturer], gene.TimeSlot...)
+		}
+	}
+
+	return lecturerMap
 }
 
 func crossover(adam Chromosome, eve Chromosome, round int) (Chromosome, Chromosome) {
@@ -196,7 +255,7 @@ func sortPopulation(population []Chromosome) []Chromosome {
 	return population
 }
 
-func convertSliceToMap(result map[string][]models.Section, time []availableTime) map[string][]models.Section {
+func convertTimeSliceToMap(result map[string][]models.Section, time []availableTime) map[string][]models.Section {
 	if len(time) == 0 {
 		return result
 	}
@@ -204,15 +263,27 @@ func convertSliceToMap(result map[string][]models.Section, time []availableTime)
 	mapKey := time[0].Room.Name + time[0].Day + time[0].Time.Start
 	result[mapKey] = []models.Section{}
 
-	return convertSliceToMap(result, time[1:])
+	return convertTimeSliceToMap(result, time[1:])
 }
 
-func dataPreparation() ([]models.TimeSlot, []models.Room, []models.SubjectSection) {
+func convertLecturerSliceToMap(result map[string][]availableTime, lecturers []models.Lecturer) map[string][]availableTime {
+	if len(lecturers) == 0 {
+		return result
+	}
+
+	mapKey := lecturers[0].Id.String()
+	result[mapKey] = []availableTime{}
+
+	return convertLecturerSliceToMap(result, lecturers[1:])
+}
+
+func dataPreparation() ([]models.TimeSlot, []models.Room, []models.SubjectSection, []models.Lecturer) {
 	t, _ := timeSlotRepo.FindAll()
 	r, _ := roomRepo.FindAll()
 	sec, _ := sectionRepo.FindAll()
+	l, _ := lecturerRepo.FindAll()
 
-	return t, r, sec
+	return t, r, sec, l
 }
 
 func sectionPreparation(genes []Gene, allSections []models.SubjectSection) []Gene {
