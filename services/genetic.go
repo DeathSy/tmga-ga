@@ -144,12 +144,9 @@ func standardFunction(chromosome Chromosome) Chromosome {
 func timeCheck(score float64, round int, timeBaseChromosome map[string][]models.Section) (float64, int) {
 	for _, timeSlot := range timeBaseChromosome {
 		round += 1
-
-		if len(timeSlot) > 1 {
-			break
+		if len(timeSlot) <= 1 {
+			score += 1
 		}
-
-		score += 1
 	}
 
 	return score, round
