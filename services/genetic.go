@@ -182,23 +182,6 @@ func lecturerCheck(score float64, round int, lecturerBaseChromosome map[string][
 }
 
 func consecutiveTimeCheck(score float64, round int, standardChromosome []Gene) (float64, int) {
-	for _, gene := range standardChromosome {
-		timeSlot := sortTimeSlot(append(gene.TimeSlot))
-		for key, t := range timeSlot {
-			otherTime := append(timeSlot[:key], timeSlot[key+1:]...)
-			check := true
-			round += 1
-			for _, slot := range otherTime {
-				case1 := t.Room.Id == slot.Room.Id
-				case2 := convertDayToInt(t.Day) == convertDayToInt(t.Day)
-				check = check && (case1 && case2)
-			}
-			if check {
-				score += 1
-			}
-		}
-
-	}
 
 	return score, round
 }
@@ -245,20 +228,21 @@ func mutate(chromosome Chromosome, round int) Chromosome {
 	rand.Seed(time.Now().UTC().UnixNano())
 	mutationIndex := randArrayIndex(len(standardGenePattern))
 	chromosome.Genes[mutationIndex].TimeSlot = []availableTime{}
-	chromosome.Genes[mutationIndex] = renewGene(chromosome.Genes[mutationIndex])
+	chromosome.Genes[mutationIndex] = renewGene(chromosome.Genes[mutationIndex], roomSlots)
 
 	return mutate(chromosome, round-1)
 }
 
-func renewGene(gene Gene) Gene {
+func renewGene(gene Gene, room []availableTime) Gene {
 	if len(gene.TimeSlot)*30 == gene.Section.Time {
+		gene.TimeSlot = sortTimeSlot(gene.TimeSlot)
 		return gene
 	}
 
-	roomIndex := randArrayIndex(len(roomSlots))
-	gene.TimeSlot = append(gene.TimeSlot, roomSlots[roomIndex])
+	roomIndex := randArrayIndex(len(room))
+	gene.TimeSlot = append(gene.TimeSlot, room[roomIndex])
 
-	return renewGene(gene)
+	return renewGene(gene, append(room[:roomIndex], room[roomIndex+1:]...))
 }
 
 func randArrayIndex(arraySize int) int {
