@@ -7,6 +7,7 @@ import (
 	"github.com/deathsy/tmga-ga/repositories"
 	"math/rand"
 	"sort"
+	"time"
 )
 
 type Genetic struct {
@@ -76,7 +77,7 @@ func geneticFunction(timetable []Chromosome, roomSlots []availableTime) Chromoso
 
 	timetable = sortPopulation(append(timetable, adam, eve))
 
-	jack, marry := crossover(timetable[0], timetable[1], randArrayIndex(len(standardGenePattern)))
+	jack, marry := crossover(timetable[0], timetable[1])
 
 	timetable = sortPopulation(append(timetable, jack, marry))
 
@@ -132,18 +133,15 @@ func standardFunction(chromosome Chromosome) Chromosome {
 		convertLecturerSliceToMap(map[string][]availableTime{}, lecturerData),
 	)
 
-	var score float64
-	var round int
+	timeScore, timeRound := timeCheck(0.0, 0, timeBaseChromosome)
+	lecturerScore, lecturerRound := lecturerCheck(0.0, 0, lecturerBaseChromosome)
 
-	timeCheck(score, round, timeBaseChromosome)
-	lecturerCheck(score, round, lecturerBaseChromosome)
-
-	chromosome.Fitness = score / float64(round)
+	chromosome.Fitness = (timeScore + lecturerScore) / float64(timeRound+lecturerRound)
 
 	return chromosome
 }
 
-func timeCheck(score float64, round int, timeBaseChromosome map[string][]models.Section) {
+func timeCheck(score float64, round int, timeBaseChromosome map[string][]models.Section) (float64, int) {
 	for _, timeSlot := range timeBaseChromosome {
 		round += 1
 
@@ -153,9 +151,11 @@ func timeCheck(score float64, round int, timeBaseChromosome map[string][]models.
 
 		score += 1
 	}
+
+	return score, round
 }
 
-func lecturerCheck(score float64, round int, lecturerBaseChromosome map[string][]availableTime) {
+func lecturerCheck(score float64, round int, lecturerBaseChromosome map[string][]availableTime) (float64, int) {
 	for _, gene := range lecturerBaseChromosome {
 		for index, time := range gene {
 			otherSlot := append(gene[:index], gene[index+1:]...)
@@ -171,10 +171,11 @@ func lecturerCheck(score float64, round int, lecturerBaseChromosome map[string][
 			if check {
 				score += 1
 			}
+			round += 1
 		}
 	}
 
-	round += 1
+	return score, round
 }
 
 func transformToTimeBase(chromosome Chromosome, timeMap map[string][]models.Section) map[string][]models.Section {
@@ -198,26 +199,17 @@ func transformToLectBase(chromosome Chromosome, lecturerMap map[string][]availab
 	return lecturerMap
 }
 
-func crossover(adam Chromosome, eve Chromosome, round int) (Chromosome, Chromosome) {
-	if round == 0 {
-		return calculateFitness(adam), calculateFitness(eve)
-	}
-
+func crossover(adam Chromosome, eve Chromosome) (Chromosome, Chromosome) {
+	rand.Seed(time.Now().UTC().UnixNano())
 	crossingIndex := randArrayIndex(len(standardGenePattern))
 
 	jack := Chromosome{nil, 0}
 	marry := Chromosome{nil, 0}
 
-	jack.Genes = append(
-		append(adam.Genes[:crossingIndex], eve.Genes[crossingIndex]),
-		adam.Genes[crossingIndex+1:]...,
-	)
-	marry.Genes = append(
-		append(eve.Genes[:crossingIndex], adam.Genes[crossingIndex]),
-		eve.Genes[crossingIndex+1:]...,
-	)
+	jack.Genes = append(adam.Genes[:crossingIndex], eve.Genes[crossingIndex:]...)
+	marry.Genes = append(eve.Genes[:crossingIndex], adam.Genes[crossingIndex:]...)
 
-	return crossover(jack, marry, round-1)
+	return calculateFitness(jack), calculateFitness(marry)
 }
 
 func mutate(chromosome Chromosome, round int) Chromosome {
@@ -225,6 +217,7 @@ func mutate(chromosome Chromosome, round int) Chromosome {
 		return calculateFitness(chromosome)
 	}
 
+	rand.Seed(time.Now().UTC().UnixNano())
 	mutationIndex := randArrayIndex(len(standardGenePattern))
 	chromosome.Genes[mutationIndex].TimeSlot = []availableTime{}
 	chromosome.Genes[mutationIndex] = renewGene(chromosome.Genes[mutationIndex])
