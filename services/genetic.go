@@ -67,7 +67,7 @@ func (g *Genetic) Start() Chromosome {
 }
 
 func geneticFunction(timetable []Chromosome, roomSlots []availableTime) Chromosome {
-	if timetable != nil && timetable[0].Fitness >= 0.80 {
+	if timetable != nil && timetable[0].Fitness >= 0.8 {
 		fmt.Println("Final calculateFitness value", timetable[0].Fitness)
 		return timetable[0]
 	}
@@ -106,7 +106,9 @@ func generateChromosome(chromosome Chromosome, roomArray []availableTime) Chromo
 			if len(gene.TimeSlot)*30 != gene.Section.Time {
 				break
 			}
-
+			for _, g := range chromosome.Genes {
+				g.TimeSlot = sortTimeSlot(g.TimeSlot)
+			}
 			return calculateFitness(chromosome)
 		}
 	}
@@ -135,10 +137,10 @@ func standardFunction(chromosome Chromosome) Chromosome {
 
 	timeScore, timeRound := timeCheck(0.0, 0, timeBaseChromosome)
 	lecturerScore, lecturerRound := lecturerCheck(0.0, 0, lecturerBaseChromosome)
-	consecutiveScore, consecutiveRound := consecutiveTimeCheck(0.0, 0, append(chromosome.Genes))
+	//consecutiveScore, consecutiveRound := consecutiveTimeCheck(0.0, 0, append(chromosome.Genes))
 
-	totalScore := timeScore + lecturerScore + consecutiveScore
-	totalRound := timeRound + lecturerRound + consecutiveRound
+	totalScore := timeScore + lecturerScore
+	totalRound := timeRound + lecturerRound
 
 	chromosome.Fitness = totalScore / float64(totalRound)
 
@@ -180,6 +182,23 @@ func lecturerCheck(score float64, round int, lecturerBaseChromosome map[string][
 }
 
 func consecutiveTimeCheck(score float64, round int, standardChromosome []Gene) (float64, int) {
+	for _, gene := range standardChromosome {
+		timeSlot := sortTimeSlot(append(gene.TimeSlot))
+		for key, t := range timeSlot {
+			otherTime := append(timeSlot[:key], timeSlot[key+1:]...)
+			check := true
+			round += 1
+			for _, slot := range otherTime {
+				case1 := t.Room.Id == slot.Room.Id
+				case2 := convertDayToInt(t.Day) == convertDayToInt(t.Day)
+				check = check && (case1 && case2)
+			}
+			if check {
+				score += 1
+			}
+		}
+
+	}
 
 	return score, round
 }
