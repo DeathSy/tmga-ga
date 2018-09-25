@@ -266,7 +266,7 @@ func sortTimeSlot(timeSlot []availableTime) []availableTime {
 			return timeSlot[i].Time.Start < timeSlot[j].Time.Start
 		}
 
-		return dayI > dayJ
+		return dayI < dayJ
 	})
 
 	return timeSlot
