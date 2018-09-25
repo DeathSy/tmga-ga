@@ -67,7 +67,7 @@ func (g *Genetic) Start() Chromosome {
 }
 
 func geneticFunction(timetable []Chromosome, roomSlots []availableTime) Chromosome {
-	if timetable != nil && timetable[0].Fitness >= 0.98 {
+	if timetable != nil && timetable[0].Fitness >= 0.80 {
 		fmt.Println("Final calculateFitness value", timetable[0].Fitness)
 		return timetable[0]
 	}
@@ -135,8 +135,12 @@ func standardFunction(chromosome Chromosome) Chromosome {
 
 	timeScore, timeRound := timeCheck(0.0, 0, timeBaseChromosome)
 	lecturerScore, lecturerRound := lecturerCheck(0.0, 0, lecturerBaseChromosome)
+	consecutiveScore, consecutiveRound := consecutiveTimeCheck(0.0, 0, append(chromosome.Genes))
 
-	chromosome.Fitness = (timeScore + lecturerScore) / float64(timeRound+lecturerRound)
+	totalScore := timeScore + lecturerScore + consecutiveScore
+	totalRound := timeRound + lecturerRound + consecutiveRound
+
+	chromosome.Fitness = totalScore / float64(totalRound)
 
 	return chromosome
 }
@@ -171,6 +175,11 @@ func lecturerCheck(score float64, round int, lecturerBaseChromosome map[string][
 			round += 1
 		}
 	}
+
+	return score, round
+}
+
+func consecutiveTimeCheck(score float64, round int, standardChromosome []Gene) (float64, int) {
 
 	return score, round
 }
@@ -245,6 +254,21 @@ func sortPopulation(population []Chromosome) []Chromosome {
 	return population
 }
 
+func sortTimeSlot(timeSlot []availableTime) []availableTime {
+	sort.SliceStable(timeSlot, func(i, j int) bool {
+		dayI := convertDayToInt(timeSlot[i].Day)
+		dayJ := convertDayToInt(timeSlot[j].Day)
+
+		if dayI == dayJ {
+			return timeSlot[i].Time.Start < timeSlot[j].Time.Start
+		}
+
+		return dayI > dayJ
+	})
+
+	return timeSlot
+}
+
 func convertTimeSliceToMap(result map[string][]models.Section, time []availableTime) map[string][]models.Section {
 	if len(time) == 0 {
 		return result
@@ -265,6 +289,24 @@ func convertLecturerSliceToMap(result map[string][]availableTime, lecturers []mo
 	result[mapKey] = []availableTime{}
 
 	return convertLecturerSliceToMap(result, lecturers[1:])
+}
+
+func convertDayToInt(day string) int {
+	var dayInt int
+	switch {
+	case day == "MON":
+		dayInt = 1
+	case day == "TUE":
+		dayInt = 2
+	case day == "WED":
+		dayInt = 3
+	case day == "THU":
+		dayInt = 4
+	case day == "FRI":
+		dayInt = 5
+	}
+
+	return dayInt
 }
 
 func dataPreparation() ([]models.TimeSlot, []models.Room, []models.SubjectSection, []models.Lecturer) {
