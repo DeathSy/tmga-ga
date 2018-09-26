@@ -7,6 +7,7 @@ import (
 	"github.com/deathsy/tmga-ga/repositories"
 	"math/rand"
 	"sort"
+	"sync"
 	"time"
 )
 
@@ -45,9 +46,14 @@ var DAYS = []string{"MON", "TUE", "WED", "THU", "FRI"}
 var standardGenePattern []Gene
 var roomSlots []availableTime
 
+var fitnessWaitGroup sync.WaitGroup
+
 func init() {
+	rand.Seed(time.Now().UTC().UnixNano())
+
 	initialReposData()
 	timeSlotData, roomData, sectionData, lecturerData = dataPreparation()
+	standardGenePattern = sectionPreparation(nil, sectionData)
 }
 
 func initialReposData() {
@@ -61,192 +67,267 @@ func initialReposData() {
 
 func (g *Genetic) Start() Chromosome {
 	roomSlots = timePreparation(nil, roomData, DAYS, timeSlotData)
-	standardGenePattern = sectionPreparation(nil, sectionData)
 
-	return geneticFunction(nil, roomSlots)
+	return geneticFunction(append(roomSlots))
 }
 
-func geneticFunction(timetable []Chromosome, roomSlots []availableTime) Chromosome {
-	if timetable != nil && timetable[0].Fitness >= 0.8 {
-		fmt.Println("Final calculateFitness value", timetable[0].Fitness)
-		return timetable[0]
-	}
+func geneticFunction(roomSlots []availableTime) Chromosome {
+	var populationPool []Chromosome
+	for {
+		adam := generateChromosome(roomSlots, sectionPreparation(nil, sectionData))
+		eve := generateChromosome(roomSlots, sectionPreparation(nil, sectionData))
 
-	adam := generateChromosome(Chromosome{}, roomSlots)
-	eve := generateChromosome(Chromosome{}, roomSlots)
+		populationPool = sortPopulation(append(populationPool, adam))
+		populationPool = sortPopulation(append(populationPool, eve))
 
-	timetable = sortPopulation(append(timetable, adam, eve))
+		jack, marry := crossover(populationPool[0].Genes, populationPool[1].Genes)
 
-	jack, marry := crossover(timetable[0], timetable[1])
+		populationPool = sortPopulation(append(populationPool, jack))
+		populationPool = sortPopulation(append(populationPool, marry))
 
-	timetable = sortPopulation(append(timetable, jack, marry))
+		catherine := mutate(populationPool[0].Genes)
 
-	newJack := mutate(timetable[0], len(standardGenePattern)*10/100)
+		populationPool = sortPopulation(append(populationPool, catherine))
 
-	timetable = sortPopulation(append(timetable, newJack))
+		fmt.Println("Max fitness", populationPool[0].Fitness)
 
-	fmt.Println("Max calculateFitness value", timetable[0].Fitness)
-
-	return geneticFunction(timetable, roomSlots)
-}
-
-func generateChromosome(chromosome Chromosome, roomArray []availableTime) Chromosome {
-	if len(chromosome.Genes) == 0 {
-		chromosome.Genes = append(chromosome.Genes, standardGenePattern...)
-		chromosome.Fitness = 0
-	}
-
-	sectionIndex := randArrayIndex(len(standardGenePattern))
-	roomIndex := randArrayIndex(len(roomArray))
-	if len(chromosome.Genes[sectionIndex].TimeSlot)*30 != chromosome.Genes[sectionIndex].Section.Time {
-		chromosome.Genes[sectionIndex].TimeSlot = append(chromosome.Genes[sectionIndex].TimeSlot, roomArray[roomIndex])
-		roomArray = append(roomArray[:roomIndex], roomArray[roomIndex+1:]...)
-	} else {
-		for _, gene := range chromosome.Genes {
-			if len(gene.TimeSlot)*30 != gene.Section.Time {
-				break
-			}
-			for _, g := range chromosome.Genes {
-				g.TimeSlot = sortTimeSlot(g.TimeSlot)
-			}
-			return calculateFitness(chromosome)
+		if populationPool[0].Fitness > 0.8 {
+			break
 		}
 	}
 
-	return generateChromosome(chromosome, roomArray)
+	fmt.Println("Final fitness", populationPool[0].Fitness)
+
+	return populationPool[0]
 }
 
-func calculateFitness(chromosome Chromosome) Chromosome {
-
-	standardFunction(chromosome)
-	chromosome.Fitness = rand.Float64()
-
-	return chromosome
-}
-
-func standardFunction(chromosome Chromosome) Chromosome {
-	timeBaseChromosome := transformToTimeBase(
-		chromosome,
-		convertTimeSliceToMap(map[string][]models.Section{}, roomSlots),
-	)
-
-	lecturerBaseChromosome := transformToLectBase(
-		chromosome,
-		convertLecturerSliceToMap(map[string][]availableTime{}, lecturerData),
-	)
-
-	timeScore, timeRound := timeCheck(0.0, 0, timeBaseChromosome)
-	lecturerScore, lecturerRound := lecturerCheck(0.0, 0, lecturerBaseChromosome)
-	//consecutiveScore, consecutiveRound := consecutiveTimeCheck(0.0, 0, append(chromosome.Genes))
-
-	totalScore := timeScore + lecturerScore
-	totalRound := timeRound + lecturerRound
-
-	chromosome.Fitness = totalScore / float64(totalRound)
-
-	return chromosome
-}
-
-func timeCheck(score float64, round int, timeBaseChromosome map[string][]models.Section) (float64, int) {
-	for _, timeSlot := range timeBaseChromosome {
-		round += 1
-		if len(timeSlot) <= 1 {
-			score += 1
-		}
+func generateChromosome(room []availableTime, genes []Gene) Chromosome {
+	round := 0
+	limit := 0
+	for _, gene := range genes {
+		limit += gene.Section.Time / 30
 	}
 
-	return score, round
-}
+	for round < limit {
+		roomIndex := rand.Intn(len(room))
+		geneIndex := rand.Intn(len(genes))
 
-func lecturerCheck(score float64, round int, lecturerBaseChromosome map[string][]availableTime) (float64, int) {
-	for _, gene := range lecturerBaseChromosome {
-		for index, time := range gene {
-			otherSlot := append(gene[:index], gene[index+1:]...)
-			check := true
-			for _, slot := range otherSlot {
-				case1 := time.Time.Start == slot.Time.Start
-				case2 := time.Day == slot.Day
-				case3 := time.Room.Id == slot.Room.Id
-
-				check = check && !(case1 && case2 && case3)
-			}
-
-			if check {
-				score += 1
-			}
+		if len(genes[geneIndex].TimeSlot)*30 < genes[geneIndex].Section.Time {
+			genes[geneIndex].TimeSlot = append(genes[geneIndex].TimeSlot, room[roomIndex])
+			genes[geneIndex].TimeSlot = sortTimeSlot(genes[geneIndex].TimeSlot)
+			tmpSlice := append(room[:roomIndex])
+			copyTmp := make([]availableTime, len(tmpSlice))
+			copy(copyTmp, tmpSlice)
+			room = append(copyTmp, room[roomIndex+1:]...)
 			round += 1
 		}
 	}
-
-	return score, round
+	return calculateFitness(Chromosome{Genes: genes})
 }
 
-func consecutiveTimeCheck(score float64, round int, standardChromosome []Gene) (float64, int) {
+func calculateFitness(chromosome Chromosome) Chromosome {
+	resultCh := make(chan float64, 4)
 
-	return score, round
+	fitnessWaitGroup.Add(1)
+	go timeCheck(resultCh, transformToTimeBase(chromosome))
+
+	fitnessWaitGroup.Add(1)
+	go lecturerCheck(resultCh, transformToLecturerBase(chromosome))
+
+	fitnessWaitGroup.Add(1)
+	go consecutiveTimeCheck(resultCh, chromosome.Genes)
+
+	fitnessWaitGroup.Add(1)
+	go roomTypeCheck(resultCh, chromosome.Genes)
+
+	fitnessWaitGroup.Wait()
+	close(resultCh)
+
+	score := 0.0
+	round := 0
+
+	for result := range resultCh {
+		score += result
+		round++
+	}
+
+	chromosome.Fitness = score / float64(round)
+
+	return chromosome
 }
 
-func transformToTimeBase(chromosome Chromosome, timeMap map[string][]models.Section) map[string][]models.Section {
+func timeCheck(resultCh chan float64, timeBaseChromosome map[string][]models.Section) {
+	defer fitnessWaitGroup.Done()
+
+	score := 0.0
+	round := 0
+
+	for _, gene := range timeBaseChromosome {
+		if len(gene) <= 1 {
+			score++
+		}
+		round++
+	}
+
+	resultCh <- score / float64(round)
+}
+
+func lecturerCheck(resultCh chan float64, lecturerBaseChromosome map[string][]availableTime) {
+	defer fitnessWaitGroup.Done()
+
+	score := 0.0
+	round := 0
+
+	for _, gene := range lecturerBaseChromosome {
+		for key, geneTime := range gene {
+			tmpSlice := append(gene[:key])
+			copyTmp := make([]availableTime, len(tmpSlice))
+			copy(copyTmp, tmpSlice)
+			otherTime := append(copyTmp, gene[key+1:]...)
+			check := true
+			for _, slot := range otherTime {
+				case1 := slot.Room.Name == geneTime.Room.Name
+				case2 := slot.Day == geneTime.Day
+				case3 := slot.Time.Start == geneTime.Time.Start
+
+				check = check && (case1 || !(case2 && case3))
+			}
+			if check {
+				score++
+			}
+			round++
+		}
+	}
+
+	resultCh <- score / float64(round)
+}
+
+func consecutiveTimeCheck(resultCh chan float64, standardChromosome []Gene) {
+	defer fitnessWaitGroup.Done()
+
+	score := 0.0
+	round := 0
+
+	for _, gene := range standardChromosome {
+		for key, geneTime := range gene.TimeSlot {
+			tmpSlice := append(gene.TimeSlot[:key])
+			copyTmp := make([]availableTime, len(tmpSlice))
+			copy(copyTmp, tmpSlice)
+			otherTime := append(copyTmp, gene.TimeSlot[key+1:]...)
+			check := true
+			for _, slot := range otherTime {
+				case1 := geneTime.Room.Id == slot.Room.Id
+				case2 := geneTime.Day == slot.Day
+				check = check && (case1 && case2)
+			}
+			if key+1 < len(gene.TimeSlot) {
+				check = geneTime.Time.End == gene.TimeSlot[key+1].Time.Start
+			}
+			if check {
+				score++
+			}
+			round++
+		}
+	}
+
+	resultCh <- score / float64(round)
+}
+
+func roomTypeCheck(resultCh chan float64, standardChromosome []Gene) {
+	defer fitnessWaitGroup.Done()
+
+	score := 0.0
+	round := 0
+
+	for _, gene := range standardChromosome {
+		for _, geneTime := range gene.TimeSlot {
+			if gene.Section.Type == geneTime.Room.Type.Name {
+				score++
+			}
+			round++
+		}
+	}
+
+	resultCh <- score / float64(round)
+}
+
+func crossover(chromosomeA []Gene, chromosomeB []Gene) (Chromosome, Chromosome) {
+	randIndex := rand.Intn(len(chromosomeA))
+
+	sliceTmpA := append(chromosomeA[:randIndex])
+	copyTmpA := make([]Gene, len(sliceTmpA))
+	copy(copyTmpA, sliceTmpA)
+
+	sliceTmpB := append(chromosomeB[:randIndex])
+	copyTmpB := make([]Gene, len(sliceTmpB))
+	copy(copyTmpB, sliceTmpB)
+
+	jack := append(copyTmpA, chromosomeB[randIndex:]...)
+	mary := append(sliceTmpB, chromosomeA[randIndex:]...)
+
+	return calculateFitness(Chromosome{Genes: jack}), calculateFitness(Chromosome{Genes: mary})
+}
+
+func mutate(chromosome []Gene) Chromosome {
+	mutationPercentage := len(chromosome) * 10 / 100
+
+	var randGeneIndex, randRoomIndex []int
+	var limit int
+
+	for mutationPercentage > 0 {
+		randNum := rand.Intn(len(chromosome))
+		randGeneIndex = append(randGeneIndex, randNum)
+
+		limit += chromosome[randNum].Section.Time / 30
+
+		mutationPercentage--
+	}
+
+	for limit > 0 {
+		randNum := rand.Intn(len(roomSlots))
+		randRoomIndex = append(randRoomIndex, randNum)
+
+		limit--
+	}
+
+	tmpSlice := append(chromosome)
+	copyTmp := make([]Gene, len(chromosome))
+	copy(copyTmp, tmpSlice)
+
+	for _, index := range randGeneIndex {
+		copyTmp[index].TimeSlot = []availableTime{}
+		for timeLimit := 0; timeLimit < copyTmp[index].Section.Time/30; timeLimit++ {
+			copyTmp[index].TimeSlot = append(copyTmp[index].TimeSlot, roomSlots[randRoomIndex[0]])
+			randRoomIndex = append(randRoomIndex[1:])
+		}
+	}
+
+	return calculateFitness(Chromosome{Genes: copyTmp})
+}
+
+func transformToTimeBase(chromosome Chromosome) map[string][]models.Section {
+	timeMap := convertTimeSliceToMap(map[string][]models.Section{}, timePreparation(nil, roomData, DAYS, timeSlotData))
+
 	for _, gene := range chromosome.Genes {
-		for _, time := range gene.TimeSlot {
-			key := time.Room.Name + time.Day + time.Time.Start
-			timeMap[key] = append(timeMap[key], gene.Section)
+		for _, slot := range gene.TimeSlot {
+			key := slot.Room.Name + slot.Day + slot.Time.Start
+			tmpKey := append(timeMap[key])
+			timeMap[key] = append(tmpKey, gene.Section)
 		}
 	}
 
 	return timeMap
 }
 
-func transformToLectBase(chromosome Chromosome, lecturerMap map[string][]availableTime) map[string][]availableTime {
+func transformToLecturerBase(chromosome Chromosome) map[string][]availableTime {
+	lecturerMap := convertLecturerSliceToMap(map[string][]availableTime{}, lecturerData)
+
 	for _, gene := range chromosome.Genes {
 		for _, lecturer := range gene.Section.Lecturers {
 			lecturerMap[lecturer] = append(lecturerMap[lecturer], gene.TimeSlot...)
 		}
 	}
-
 	return lecturerMap
-}
-
-func crossover(adam Chromosome, eve Chromosome) (Chromosome, Chromosome) {
-	rand.Seed(time.Now().UTC().UnixNano())
-	crossingIndex := randArrayIndex(len(standardGenePattern))
-
-	jack := Chromosome{nil, 0}
-	marry := Chromosome{nil, 0}
-
-	jack.Genes = append(adam.Genes[:crossingIndex], eve.Genes[crossingIndex:]...)
-	marry.Genes = append(eve.Genes[:crossingIndex], adam.Genes[crossingIndex:]...)
-
-	return calculateFitness(jack), calculateFitness(marry)
-}
-
-func mutate(chromosome Chromosome, round int) Chromosome {
-	if round == 0 {
-		return calculateFitness(chromosome)
-	}
-
-	rand.Seed(time.Now().UTC().UnixNano())
-	mutationIndex := randArrayIndex(len(standardGenePattern))
-	chromosome.Genes[mutationIndex].TimeSlot = []availableTime{}
-	chromosome.Genes[mutationIndex] = renewGene(chromosome.Genes[mutationIndex], roomSlots)
-
-	return mutate(chromosome, round-1)
-}
-
-func renewGene(gene Gene, room []availableTime) Gene {
-	if len(gene.TimeSlot)*30 == gene.Section.Time {
-		gene.TimeSlot = sortTimeSlot(gene.TimeSlot)
-		return gene
-	}
-
-	roomIndex := randArrayIndex(len(room))
-	gene.TimeSlot = append(gene.TimeSlot, room[roomIndex])
-
-	return renewGene(gene, append(room[:roomIndex], room[roomIndex+1:]...))
-}
-
-func randArrayIndex(arraySize int) int {
-	return rand.Intn(arraySize)
 }
 
 func sortPopulation(population []Chromosome) []Chromosome {
