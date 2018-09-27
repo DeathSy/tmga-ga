@@ -4,23 +4,25 @@ jobs:
     machine: true
     steps:
       - checkout
-      - run: |
-          docker login -u $DOCKER_USER -p $DOCKER_PASS
-      - run: |
-          docker image build -t dscythe/tmga-ga .
-      - run: |
-          docker push dscythe/tmga-ga
+      - run:
+          name: Build genetic api image
+          command: |
+            docker login -u $DOCKER_USER -p $DOCKER_PASS
+            docker image build -t dscythe/tmga-ga .
+            docker push dscythe/tmga-ga
 
   deploy:
     machine: true
     steps:
       - checkout
-      - run: |
-          ssh centos@54.179.187.112 \
-            'sudo docker pull dscythe/tmga-ga && \
+      - run:
+          name: Deploy to remote host
+          command: |
+            ssh centos@54.179.187.112 \
+            "sudo docker pull dscythe/tmga-ga && \
             sudo docker container rm -f tmga_ga || true && \
             sudo docker container run \
-            --rm -ditp 6000:9000 --name tmga_ga dscythe/tmga-ga'
+            --rm -ditp 6000:9000 --name tmga_ga dscythe/tmga-ga"
 
 workflows:
   version: 2
