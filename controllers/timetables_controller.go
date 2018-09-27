@@ -23,7 +23,7 @@ func GetTimetable(w http.ResponseWriter, r *http.Request) {
 }
 
 func CreateTimeTable(w http.ResponseWriter, r *http.Request) {
-	ga := services.Genetic{}
+	ga := services.Genetic{InitialGeneration: 100}
 	chromosome := ga.Start()
 
 	services.RespondWithJson(w, http.StatusOK, chromosome)
