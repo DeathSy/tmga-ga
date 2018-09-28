@@ -15,15 +15,8 @@ type Genetic struct {
 	InitialGeneration int
 }
 
-type Gene struct {
-	Section models.Section
-	Room    models.Room
-	Day     string
-	Time    []models.TimeSlot
-}
-
 type Chromosome struct {
-	Genes   []Gene
+	Genes   []models.Gene
 	Fitness float64
 }
 
@@ -33,12 +26,15 @@ var sectionData []models.SubjectSection
 var timeSlotData []models.TimeSlot
 var roomData []models.Room
 
+var timetableRepo repositories.TimetableRepository
+
 func init() {
 	rand.Seed(time.Now().UTC().UnixNano())
 	session := config.Connect()
 	timeSlotRepo := repositories.TimeslotRepository{DB: session, Collection: "TimeSlot"}
 	roomRepo := repositories.RoomRepository{DB: session, Collection: "Room"}
 	sectionRepo := repositories.SubjectSectionRepository{DB: session, Collection: "SubjectSection"}
+	timetableRepo = repositories.TimetableRepository{DB: session, Collection: "Timetable"}
 
 	sectionData, _ = sectionRepo.FindAll()
 	timeSlotData, _ = timeSlotRepo.FindAll()
@@ -48,7 +44,7 @@ func init() {
 	})
 }
 
-func (g *Genetic) Start() Chromosome {
+func (g *Genetic) Start(semester string) Chromosome {
 	var generateGroup sync.WaitGroup
 	populationCh := make(chan Chromosome, g.InitialGeneration)
 
@@ -66,6 +62,8 @@ func (g *Genetic) Start() Chromosome {
 
 	populationPool := ConvertChanToSlice(populationCh)
 	sortPopulation(populationPool)
+
+	objecId, _ := timetableRepo.Create(transformPopulationToTimetable(populationPool[0], semester))
 
 	for populationPool[0].Fitness < 0.85 {
 		tmpSlice := append(populationPool[:g.InitialGeneration*20/100])
@@ -108,14 +106,22 @@ func (g *Genetic) Start() Chromosome {
 		}
 
 		populationPool = append(populationPool, tmpGeneratePool...)
+		fmt.Println(objecId)
+		err := timetableRepo.Update(transformPopulationToTimetable(populationPool[0], semester))
+		if err != nil {
+			panic(err)
+		}
 		fmt.Println("Fitness", populationPool[0].Fitness)
 	}
 
 	return populationPool[0]
 }
+func transformPopulationToTimetable(chromosome Chromosome, semester string) *models.Timetable {
+	return &models.Timetable{FitnessLevel: chromosome.Fitness, Sections: chromosome.Genes, Semester: semester}
+}
 
 func generateChromosome() Chromosome {
-	var genes []Gene
+	var genes []models.Gene
 	sections := ExpandingSection(sectionData)
 
 	for _, section := range sections {
@@ -125,7 +131,7 @@ func generateChromosome() Chromosome {
 
 		genes = append(
 			genes,
-			Gene{
+			models.Gene{
 				Section: section,
 				Room:    roomData[randRoomIndex],
 				Day:     DAYS[randDayIndex],
@@ -135,7 +141,7 @@ func generateChromosome() Chromosome {
 	return calculateFitness(genes)
 }
 
-func calculateFitness(genes []Gene) Chromosome {
+func calculateFitness(genes []models.Gene) Chromosome {
 	var fitnessGroup sync.WaitGroup
 	resultCh := make(chan float64, 3)
 
@@ -203,16 +209,16 @@ func calculateFitness(genes []Gene) Chromosome {
 	return Chromosome{Genes: genes, Fitness: finalResult / float64(finalRound)}
 }
 
-func crossover(chromosomeA []Gene, chromosomeB []Gene) ([]Gene, []Gene) {
+func crossover(chromosomeA []models.Gene, chromosomeB []models.Gene) ([]models.Gene, []models.Gene) {
 	randIndex := rand.Intn(len(chromosomeA))
 
 	aTmp := append(chromosomeA[:randIndex])
-	copyATmp := make([]Gene, len(aTmp))
+	copyATmp := make([]models.Gene, len(aTmp))
 	copy(copyATmp, aTmp)
 	resultA := append(copyATmp)
 
 	bTmp := append(chromosomeB[:randIndex])
-	copyBTmp := make([]Gene, len(bTmp))
+	copyBTmp := make([]models.Gene, len(bTmp))
 	copy(copyBTmp, bTmp)
 	resultB := append(copyATmp)
 
@@ -222,7 +228,7 @@ func crossover(chromosomeA []Gene, chromosomeB []Gene) ([]Gene, []Gene) {
 	return resultA, resultB
 }
 
-func mutate(chromosome []Gene) []Gene {
+func mutate(chromosome []models.Gene) []models.Gene {
 	mutateRound := len(chromosome) * 10 / 100
 	for index := 0; index < mutateRound; index++ {
 		randGeneIndex := rand.Intn(len(chromosome))
@@ -230,7 +236,7 @@ func mutate(chromosome []Gene) []Gene {
 		randDayIndex := rand.Intn(len(DAYS))
 		randTimeSlotIndex := rand.Intn(len(timeSlotData) - chromosome[randGeneIndex].Section.Time/30)
 
-		chromosome[randGeneIndex] = Gene{
+		chromosome[randGeneIndex] = models.Gene{
 			Section: chromosome[randGeneIndex].Section,
 			Room:    roomData[randRoomIndex],
 			Day:     DAYS[randDayIndex],
@@ -246,7 +252,7 @@ func sortPopulation(populationPool []Chromosome) {
 	})
 }
 
-func transformToTimeBaseChromosome(genes []Gene) map[string][]models.Section {
+func transformToTimeBaseChromosome(genes []models.Gene) map[string][]models.Section {
 	timeMap := make(map[string][]models.Section)
 	for _, room := range roomData {
 		for _, day := range DAYS {
@@ -266,7 +272,7 @@ func transformToTimeBaseChromosome(genes []Gene) map[string][]models.Section {
 	return timeMap
 }
 
-func transformToTimeBaseWithLecturer(genes []Gene) map[string][]string {
+func transformToTimeBaseWithLecturer(genes []models.Gene) map[string][]string {
 	timeMap := make(map[string][]string)
 	for _, day := range DAYS {
 		for _, slot := range timeSlotData {
