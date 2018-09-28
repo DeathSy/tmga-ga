@@ -26,10 +26,6 @@ func (r *TimetableRepository) Find(semester string) (models.Timetable, error) {
 
 	err := r.DB.C(r.Collection).Find(bson.M{"semester": semester}).One(&timetable)
 
-	sort.SliceStable(timetable.Sections, func(i, j int) bool {
-		return convertDayToInt(timetable.Sections[i].Day) < convertDayToInt(timetable.Sections[j].Day)
-	})
-
 	for sectionIndex, section := range timetable.Sections {
 		var subject models.Subject
 		e := r.DB.C("Subject").FindId(bson.ObjectIdHex(section.Section.SubjectId)).One(&subject)
@@ -50,6 +46,18 @@ func (r *TimetableRepository) Find(semester string) (models.Timetable, error) {
 		}
 		timetable.Sections[sectionIndex].Section.Subject = subject
 	}
+
+	sort.SliceStable(timetable.Sections, func(i, j int) bool {
+		case1 := convertDayToInt(timetable.Sections[i].Day) < convertDayToInt(timetable.Sections[j].Day)
+		sort.SliceStable(timetable.Sections[i].Section.Subject.Student, func(si, sj int) bool {
+			return timetable.Sections[i].Section.Subject.Student[si] > timetable.Sections[i].Section.Subject.Student[sj]
+		})
+		sort.SliceStable(timetable.Sections[j].Section.Subject.Student, func(si, sj int) bool {
+			return timetable.Sections[j].Section.Subject.Student[si] > timetable.Sections[j].Section.Subject.Student[sj]
+		})
+		case2 := timetable.Sections[i].Section.Subject.Student[0] < timetable.Sections[j].Section.Subject.Student[0]
+		return case1 && case2
+	})
 
 	return timetable, err
 }
