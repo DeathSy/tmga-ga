@@ -4,6 +4,7 @@ import (
 	"github.com/deathsy/tmga-ga/models"
 	"github.com/globalsign/mgo"
 	"github.com/globalsign/mgo/bson"
+	"sort"
 )
 
 type TimetableRepository struct {
@@ -24,6 +25,10 @@ func (r *TimetableRepository) Find(semester string) (models.Timetable, error) {
 	var timetable models.Timetable
 
 	err := r.DB.C(r.Collection).Find(bson.M{"semester": semester}).One(&timetable)
+
+	sort.SliceStable(timetable.Sections, func(i, j int) bool {
+		return convertDayToInt(timetable.Sections[i].Day) < convertDayToInt(timetable.Sections[j].Day)
+	})
 
 	for sectionIndex, section := range timetable.Sections {
 		var subject models.Subject
@@ -62,4 +67,22 @@ func (r *TimetableRepository) Update(timetable *models.Timetable) error {
 	err := r.DB.C(r.Collection).Update(query, &timetable)
 
 	return err
+}
+
+func convertDayToInt(day string) int {
+	dayInt := 1
+	switch {
+	case day == "MON":
+		dayInt = 1
+	case day == "TUE":
+		dayInt = 2
+	case day == "WED":
+		dayInt = 3
+	case day == "THU":
+		dayInt = 4
+	case day == "FRI":
+		dayInt = 5
+	}
+
+	return dayInt
 }
