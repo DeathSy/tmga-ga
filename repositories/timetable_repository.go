@@ -20,6 +20,14 @@ func (r *TimetableRepository) FindAll() ([]models.Timetable, error) {
 
 }
 
+func (r *TimetableRepository) Find(semester string) (models.Timetable, error) {
+	var timetable models.Timetable
+
+	err := r.DB.C(r.Collection).Find(bson.M{"semester": semester}).One(&timetable)
+
+	return timetable, err
+}
+
 func (r *TimetableRepository) Create(timetable *models.Timetable) (bson.ObjectId, error) {
 	objectId := bson.NewObjectId()
 	timetable.Id = objectId
