@@ -5,7 +5,8 @@ WORKDIR $GOPATH/src/deathsy/tmga-ga
 RUN curl https://raw.githubusercontent.com/golang/dep/master/install.sh | sh
 RUN dep ensure
 
-RUN go build -o /go/bin/tmga
+RUN go build -o /go/bin/tmga main.go
+RUN go build -o /go/bin/genetic genetic.go
 COPY ./config.toml /go/bin/config.toml
 
 ENTRYPOINT ["/go/bin/tmga"]
