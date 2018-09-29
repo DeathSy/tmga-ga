@@ -6,10 +6,11 @@ import (
 )
 
 type Section struct {
-	Name         string   `bson:"name" json:"name"`
-	SubjectId    string   `bson:"subjectId" json:"subjectId"`
-	Type         string   `bson:"type" json:"type"`
-	Lecturers    []string `bson:"lecturers" json:"lecturers"`
+	Id           bson.ObjectId `bson:"_id,omitempty" json:"_id"`
+	Name         string        `bson:"name" json:"name"`
+	SubjectId    string        `bson:"subjectId" json:"subjectId"`
+	Type         string        `bson:"type" json:"type"`
+	Lecturers    []string      `bson:"lecturers" json:"lecturers"`
 	LecturerData []Lecturer
 	Subject      Subject
 	Time         int `bson:"time" json:"time"`

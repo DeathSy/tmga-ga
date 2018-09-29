@@ -6,7 +6,7 @@ import (
 )
 
 type Room struct {
-	Id        bson.ObjectId `bson:"_id" json:"_id"`
+	Id        bson.ObjectId `bson:"_id,omitempty" json:"_id"`
 	Name      string        `bson:"name" json:"name"`
 	Capacity  int           `bson:"capacity" json:"capacity"`
 	CreatedAt time.Time     `bson:"createdAt" json:"createdAt"`

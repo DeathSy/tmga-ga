@@ -4,7 +4,6 @@ import (
 	"github.com/deathsy/tmga-ga/models"
 	"github.com/globalsign/mgo"
 	"github.com/globalsign/mgo/bson"
-	"sort"
 )
 
 type TimetableRepository struct {
@@ -46,51 +45,33 @@ func (r *TimetableRepository) Find(semester string) (models.Timetable, error) {
 		}
 		timetable.Sections[sectionIndex].Section.Subject = subject
 	}
-
-	sort.SliceStable(timetable.Sections, func(i, j int) bool {
-		case1 := convertDayToInt(timetable.Sections[i].Day) < convertDayToInt(timetable.Sections[j].Day)
-		sort.SliceStable(timetable.Sections[i].Section.Subject.Student, func(si, sj int) bool {
-			return timetable.Sections[i].Section.Subject.Student[si] > timetable.Sections[i].Section.Subject.Student[sj]
-		})
-		sort.SliceStable(timetable.Sections[j].Section.Subject.Student, func(si, sj int) bool {
-			return timetable.Sections[j].Section.Subject.Student[si] > timetable.Sections[j].Section.Subject.Student[sj]
-		})
-		case2 := timetable.Sections[i].Section.Subject.Student[0] < timetable.Sections[j].Section.Subject.Student[0]
-		return case1 && case2
-	})
-
 	return timetable, err
 }
 
-func (r *TimetableRepository) Create(timetable *models.Timetable) (bson.ObjectId, error) {
-	objectId := bson.NewObjectId()
-	timetable.Id = objectId
-	err := r.DB.C(r.Collection).Insert(&timetable)
-
-	return objectId, err
-}
-
-func (r *TimetableRepository) Update(timetable *models.Timetable) error {
-	query := bson.M{"semester": timetable.Semester}
-	err := r.DB.C(r.Collection).Update(query, &timetable)
-
-	return err
-}
-
-func convertDayToInt(day string) int {
-	dayInt := 1
-	switch {
-	case day == "MON":
-		dayInt = 1
-	case day == "TUE":
-		dayInt = 2
-	case day == "WED":
-		dayInt = 3
-	case day == "THU":
-		dayInt = 4
-	case day == "FRI":
-		dayInt = 5
+func (r *TimetableRepository) Create(timetable *models.Timetable) {
+	if err := r.DB.C(r.Collection).Insert(bson.M{
+		"_id":          bson.NewObjectId().Hex(),
+		"semester":     timetable.Semester,
+		"sections":     timetable.Sections,
+		"fitnessLevel": timetable.FitnessLevel,
+	}); err != nil {
+		panic(err.Error())
 	}
+}
 
-	return dayInt
+func (r *TimetableRepository) Update(timetable *models.Timetable) {
+	query := bson.M{"semester": timetable.Semester}
+	err := r.DB.C(r.Collection).Update(
+		query,
+		bson.M{
+			"$set": bson.M{
+				"fitnessLevel": timetable.FitnessLevel,
+				"Sections":     timetable.Sections,
+			},
+		},
+	)
+
+	if err != nil {
+		panic(err.Error())
+	}
 }

@@ -6,7 +6,7 @@ import (
 )
 
 type TimeSlot struct {
-	Id        bson.ObjectId `bson:"_id" json:"_id"`
+	Id        bson.ObjectId `bson:"_id,omitempty" json:"_id"`
 	Start     string        `bson:"start" json:"start"`
 	End       string        `bson:"end" json:"end"`
 	CreatedAt time.Time     `bson:"createdAt" json:"createdAt"`

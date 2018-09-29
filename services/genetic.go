@@ -63,7 +63,7 @@ func (g *Genetic) Start(semester string) Chromosome {
 	populationPool := ConvertChanToSlice(populationCh)
 	sortPopulation(populationPool)
 
-	objecId, _ := timetableRepo.Create(transformPopulationToTimetable(populationPool[0], semester))
+	timetableRepo.Create(transformPopulationToTimetable(populationPool[0], semester))
 
 	for populationPool[0].Fitness < 0.85 {
 		tmpSlice := append(populationPool[:g.InitialGeneration*20/100])
@@ -106,11 +106,7 @@ func (g *Genetic) Start(semester string) Chromosome {
 		}
 
 		populationPool = append(populationPool, tmpGeneratePool...)
-		fmt.Println(objecId)
-		err := timetableRepo.Update(transformPopulationToTimetable(populationPool[0], semester))
-		if err != nil {
-			panic(err)
-		}
+		timetableRepo.Update(transformPopulationToTimetable(populationPool[0], semester))
 		fmt.Println("Fitness", populationPool[0].Fitness)
 	}
 
