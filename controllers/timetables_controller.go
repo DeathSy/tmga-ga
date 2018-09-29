@@ -26,11 +26,16 @@ func FindTimetable(w http.ResponseWriter, r *http.Request) {
 	repository := repositories.TimetableRepository{DB: session, Collection: "Timetable"}
 
 	vars := mux.Vars(r)
+	query := r.URL.Query()
 	timetable, err := repository.Find(vars["part"] + "/" + vars["year"])
 	if err != nil {
 		services.RespondWithError(w, http.StatusInternalServerError, err.Error())
 	} else {
-		services.RespondWithJson(w, http.StatusOK, timetable)
+		if query.Get("fitnessLevel") != "true" {
+			services.RespondWithJson(w, http.StatusOK, timetable)
+		} else {
+			services.RespondWithJson(w, http.StatusOK, timetable.FitnessLevel)
+		}
 	}
 }
 
