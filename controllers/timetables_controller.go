@@ -34,7 +34,9 @@ func FindTimetable(w http.ResponseWriter, r *http.Request) {
 		if query.Get("fitnessLevel") != "true" {
 			services.RespondWithJson(w, http.StatusOK, timetable)
 		} else {
-			services.RespondWithJson(w, http.StatusOK, timetable.FitnessLevel)
+			services.RespondWithJson(w, http.StatusOK, struct {
+				FitnessLevel float64 `json:"fitnessLevel"`
+			}{FitnessLevel: timetable.FitnessLevel})
 		}
 	}
 }
