@@ -14,6 +14,6 @@ type Gene struct {
 type Timetable struct {
 	Id           bson.ObjectId `bson:"_id,omitempty" json:"_id"`
 	Semester     string        `bson:"semester" json:"semester"`
-	Sections     []Gene
-	FitnessLevel float64 `bson:"fitnessLevel" json:"fitnessLevel"`
+	Sections     []Gene        `bson:"Sections" json:"Sections"`
+	FitnessLevel float64       `bson:"fitnessLevel" json:"fitnessLevel"`
 }
