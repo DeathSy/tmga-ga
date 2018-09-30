@@ -48,20 +48,9 @@ func (r *TimetableRepository) Find(semester string) (models.Timetable, error) {
 	return timetable, err
 }
 
-func (r *TimetableRepository) Create(timetable *models.Timetable) {
-	if err := r.DB.C(r.Collection).Insert(bson.M{
-		"_id":          bson.NewObjectId().Hex(),
-		"semester":     timetable.Semester,
-		"sections":     timetable.Sections,
-		"fitnessLevel": timetable.FitnessLevel,
-	}); err != nil {
-		panic(err.Error())
-	}
-}
-
-func (r *TimetableRepository) Update(timetable *models.Timetable) {
+func (r *TimetableRepository) UpdateOrInsert(timetable *models.Timetable) {
 	query := bson.M{"semester": timetable.Semester}
-	err := r.DB.C(r.Collection).Update(
+	_, err := r.DB.C(r.Collection).Upsert(
 		query,
 		bson.M{
 			"$set": bson.M{
