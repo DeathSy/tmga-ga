@@ -11,4 +11,5 @@ func initTimetableRoute(r *mux.Router) {
 	s.HandleFunc("", controllers.AllTimetable).Methods("GET")
 	s.HandleFunc("/{part}/{year}", controllers.FindTimetable).Methods("GET")
 	s.HandleFunc("", controllers.CreateTimeTable).Methods("POST")
+	s.HandleFunc("/terminate", controllers.TerminateTimeTable).Methods("POST")
 }

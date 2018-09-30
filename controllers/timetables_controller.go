@@ -41,10 +41,22 @@ func FindTimetable(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func CreateTimeTable(w http.ResponseWriter, r *http.Request) {
+var cmd *exec.Cmd
+var id int
 
-	cmd := exec.Command("genetic")
+func CreateTimeTable(w http.ResponseWriter, r *http.Request) {
+	cmd = exec.Command("genetic")
 	cmd.Start()
+
+	response := struct {
+		Message string
+	}{Message: "success"}
+
+	services.RespondWithJson(w, http.StatusOK, response)
+}
+
+func TerminateTimeTable(w http.ResponseWriter, r *http.Request) {
+	cmd.Process.Kill()
 
 	response := struct {
 		Message string
