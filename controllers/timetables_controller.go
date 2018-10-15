@@ -7,6 +7,7 @@ import (
 	"github.com/gorilla/mux"
 	"net/http"
 	"os/exec"
+	"sort"
 )
 
 func AllTimetable(w http.ResponseWriter, r *http.Request) {
@@ -32,6 +33,12 @@ func FindTimetable(w http.ResponseWriter, r *http.Request) {
 		services.RespondWithError(w, http.StatusInternalServerError, err.Error())
 	} else {
 		if query.Get("fitnessLevel") != "true" {
+			sort.SliceStable(timetable.Sections, func(i, j int) bool {
+				dayI := convertDayToInt(timetable.Sections[i].Day)
+				dayJ := convertDayToInt(timetable.Sections[j].Day)
+
+				return dayI < dayJ
+			})
 			services.RespondWithJson(w, http.StatusOK, timetable)
 		} else {
 			services.RespondWithJson(w, http.StatusOK, struct {
@@ -39,10 +46,10 @@ func FindTimetable(w http.ResponseWriter, r *http.Request) {
 			}{FitnessLevel: timetable.FitnessLevel})
 		}
 	}
+	
 }
 
 var cmd *exec.Cmd
-var id int
 
 func CreateTimeTable(w http.ResponseWriter, r *http.Request) {
 	cmd = exec.Command("genetic")
@@ -63,4 +70,21 @@ func TerminateTimeTable(w http.ResponseWriter, r *http.Request) {
 	}{Message: "success"}
 
 	services.RespondWithJson(w, http.StatusOK, response)
+}
+
+func convertDayToInt (day string) int {
+	var dayInt int
+	switch {
+	case day == "MON":
+		dayInt = 1
+	case day == "TUE":
+		dayInt = 2
+	case day == "WED":
+		dayInt = 3
+	case day == "THU":
+		dayInt = 4
+	case day == "FRI":
+		dayInt = 5
+	}
+	return dayInt
 }

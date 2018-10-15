@@ -14,7 +14,16 @@ type SubjectSectionRepository struct {
 func (r *SubjectSectionRepository) FindAll() ([]models.SubjectSection, error) {
 	var subjectSection []models.SubjectSection
 
-	err := r.DB.C(r.Collection).Find(bson.M{}).All(&subjectSection)
+	query := []bson.M{{
+		"$lookup": bson.M{
+			"from": "Subject",
+			"localField": "subjectId",
+			"foreignField": "_id",
+			"as": "subject",
+		},
+	},}
+
+	err := r.DB.C(r.Collection).Pipe(query).All(&subjectSection)
 
 	return subjectSection, err
 }
