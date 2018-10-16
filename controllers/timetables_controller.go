@@ -36,6 +36,9 @@ func FindTimetable(w http.ResponseWriter, r *http.Request) {
 			sort.SliceStable(timetable.Sections, func(i, j int) bool {
 				dayI := convertDayToInt(timetable.Sections[i].Day)
 				dayJ := convertDayToInt(timetable.Sections[j].Day)
+				if dayI == dayJ {
+					return timetable.Sections[i].Time[len(timetable.Sections[i].Time) -1 ].End <= timetable.Sections[j].Time[0].Start
+				}
 
 				return dayI < dayJ
 			})
