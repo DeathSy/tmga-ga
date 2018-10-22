@@ -14,7 +14,26 @@ type FixedSubjectRepository struct {
 func (r *FixedSubjectRepository) findAll() ([]models.FixedSubject, error) {
 	var fixedSubjects []models.FixedSubject
 
-	err := r.DB.C(r.Collection).Find(bson.M{}).All(fixedSubjects)
+	query := []bson.M{
+		{
+			"$lookup": bson.M{
+				"from":         "TimeSlot",
+				"localField":   "startTimeId",
+				"foreignField": "_id",
+				"as":           "startTime",
+			},
+		},
+		{
+			"$lookup": bson.M{
+				"form":         "TimeSlot",
+				"localField":   "endTimeId",
+				"foreignField": "_id",
+				"as":           "endTime",
+			},
+		},
+	}
+
+	err := r.DB.C(r.Collection).Pipe(query).All(fixedSubjects)
 
 	return fixedSubjects, err
 }

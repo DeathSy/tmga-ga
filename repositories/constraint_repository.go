@@ -14,7 +14,50 @@ type ConstraintRepository struct {
 func (r *ConstraintRepository) FindAll() ([]models.Constraint, error) {
 	var constraints []models.Constraint
 
-	err := r.DB.C(r.Collection).Find(bson.M{}).All(constraints)
+	query := []bson.M{
+		{
+			"$lookup": bson.M{
+				"from":         "Room",
+				"localField":   "roomId",
+				"foreignField": "_id",
+				"as":           "room",
+			},
+		},
+		{
+			"$lookup": bson.M{
+				"from":         "Subject",
+				"localField":   "subjectId",
+				"foreignField": "_id",
+				"as":           "subject",
+			},
+		},
+		{
+			"$lookup": bson.M{
+				"from":         "Lecturer",
+				"localField":   "lecturerId",
+				"foreignField": "_id",
+				"as":           "lecturer",
+			},
+		},
+		{
+			"$lookup": bson.M{
+				"from":         "TimeSlot",
+				"localField":   "startTimeId",
+				"foreignField": "_id",
+				"as":           "startTime",
+			},
+		},
+		{
+			"$lookup": bson.M{
+				"form":         "TimeSlot",
+				"localField":   "endTimeId",
+				"foreignField": "_id",
+				"as":           "endTime",
+			},
+		},
+	}
+
+	err := r.DB.C(r.Collection).Pipe(query).All(constraints)
 
 	return constraints, err
 }
