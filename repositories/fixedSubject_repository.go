@@ -11,7 +11,7 @@ type FixedSubjectRepository struct {
 	Collection string
 }
 
-func (r *FixedSubjectRepository) findAll() ([]models.FixedSubject, error) {
+func (r *FixedSubjectRepository) FindAll() ([]models.FixedSubject, error) {
 	var fixedSubjects []models.FixedSubject
 
 	query := []bson.M{
