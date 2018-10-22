@@ -7,7 +7,7 @@ import (
 )
 
 type FixedSubjectRepository struct {
-	DB *mgo.Database
+	DB         *mgo.Database
 	Collection string
 }
 
