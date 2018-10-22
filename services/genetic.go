@@ -25,6 +25,8 @@ var DAYS = []string{"MON", "TUE", "WED", "THU", "FRI"}
 var sectionData []models.SubjectSection
 var timeSlotData []models.TimeSlot
 var roomData []models.Room
+var constraintData []models.Constraint
+var fixedSubjectData []models.FixedSubject
 
 var timetableRepo repositories.TimetableRepository
 
@@ -35,10 +37,15 @@ func init() {
 	roomRepo := repositories.RoomRepository{DB: session, Collection: "Room"}
 	sectionRepo := repositories.SubjectSectionRepository{DB: session, Collection: "SubjectSection"}
 	timetableRepo = repositories.TimetableRepository{DB: session, Collection: "Timetable"}
+	constraintRepo := repositories.ConstraintRepository{DB: session, Collection: "Contraint"}
+	fixedSubjectRepo := repositories.FixedSubjectRepository{DB: session, Collection: "FixedSubject"}
 
 	sectionData, _ = sectionRepo.FindAll()
 	timeSlotData, _ = timeSlotRepo.FindAll()
 	roomData, _ = roomRepo.FindAll()
+	constraintData, _ = constraintRepo.FindAll()
+	fixedSubjectData, _ = fixedSubjectRepo.FindAll()
+
 	sort.SliceStable(timeSlotData, func(i, j int) bool {
 		return timeSlotData[i].Start < timeSlotData[j].Start
 	})
@@ -126,16 +133,25 @@ func generateChromosome() Chromosome {
 		randDayIndex := rand.Intn(len(DAYS))
 		randTimeSlotIndex := rand.Intn(len(timeSlotData) - section.Time/30)
 
-		genes = append(
-			genes,
-			models.Gene{
-				Section: section,
-				Room:    roomData[randRoomIndex],
-				Day:     DAYS[randDayIndex],
-				Time:    timeSlotData[randTimeSlotIndex : randTimeSlotIndex+section.Time/30]})
+		if checkFree() {
+			genes = append(
+				genes,
+				models.Gene{
+					Section: section,
+					Room:    roomData[randRoomIndex],
+					Day:     DAYS[randDayIndex],
+					Time:    timeSlotData[randTimeSlotIndex : randTimeSlotIndex+section.Time/30]})
+		}
 	}
 
 	return calculateFitness(genes)
+}
+func checkFree() bool {
+	var isFree bool
+
+	// TODO: implement fixed subject freeTime
+
+	return isFree
 }
 
 func calculateFitness(genes []models.Gene) Chromosome {
@@ -192,6 +208,22 @@ func calculateFitness(genes []models.Gene) Chromosome {
 		}
 
 		resultCh <- score / float64(round)
+	}()
+
+	fitnessGroup.Add(1)
+	go func() {
+		defer fitnessGroup.Done()
+
+		// TODO: implement relative fitness with constraints
+
+	}()
+
+	fitnessGroup.Add(1)
+	go func() {
+		defer fitnessGroup.Done()
+
+		// TODO: implement fixed time for FixedSubject
+
 	}()
 
 	fitnessGroup.Wait()
