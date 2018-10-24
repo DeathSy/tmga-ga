@@ -20,20 +20,22 @@ func (r *FixedSubjectRepository) FindAll() ([]models.FixedSubject, error) {
 				"from":         "TimeSlot",
 				"localField":   "startTimeId",
 				"foreignField": "_id",
-				"as":           "startTime",
+				"as":           "start",
 			},
 		},
 		{
 			"$lookup": bson.M{
-				"form":         "TimeSlot",
+				"from":         "TimeSlot",
 				"localField":   "endTimeId",
 				"foreignField": "_id",
-				"as":           "endTime",
+				"as":           "end",
 			},
 		},
+		{ "$unwind": "$start" },
+		{ "$unwind": "$end"	},
 	}
 
-	err := r.DB.C(r.Collection).Pipe(query).All(fixedSubjects)
+	err := r.DB.C(r.Collection).Pipe(query).All(&fixedSubjects)
 
 	return fixedSubjects, err
 }

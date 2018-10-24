@@ -57,7 +57,7 @@ func (r *ConstraintRepository) FindAll() ([]models.Constraint, error) {
 		},
 	}
 
-	err := r.DB.C(r.Collection).Pipe(query).All(constraints)
+	err := r.DB.C(r.Collection).Pipe(query).All(&constraints)
 
 	return constraints, err
 }

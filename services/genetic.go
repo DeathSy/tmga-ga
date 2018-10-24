@@ -37,7 +37,7 @@ func init() {
 	roomRepo := repositories.RoomRepository{DB: session, Collection: "Room"}
 	sectionRepo := repositories.SubjectSectionRepository{DB: session, Collection: "SubjectSection"}
 	timetableRepo = repositories.TimetableRepository{DB: session, Collection: "Timetable"}
-	constraintRepo := repositories.ConstraintRepository{DB: session, Collection: "Contraint"}
+	constraintRepo := repositories.ConstraintRepository{DB: session, Collection: "Constrain"}
 	fixedSubjectRepo := repositories.FixedSubjectRepository{DB: session, Collection: "FixedSubject"}
 
 	sectionData, _ = sectionRepo.FindAll()
@@ -133,7 +133,8 @@ func generateChromosome() Chromosome {
 		randDayIndex := rand.Intn(len(DAYS))
 		randTimeSlotIndex := rand.Intn(len(timeSlotData) - section.Time/30)
 
-		if checkFree() {
+		isFree := checkFree(DAYS[randDayIndex], timeSlotData[randTimeSlotIndex:randTimeSlotIndex+section.Time/30])
+		if isFree {
 			genes = append(
 				genes,
 				models.Gene{
@@ -146,10 +147,16 @@ func generateChromosome() Chromosome {
 
 	return calculateFitness(genes)
 }
-func checkFree() bool {
-	var isFree bool
 
-	// TODO: implement fixed subject freeTime
+func checkFree(day string, time []models.TimeSlot) bool {
+	isFree := true
+
+	for _, fixedSubject := range fixedSubjectData {
+		case1 := day == fixedSubject.Day
+		case2 := fixedSubject.Start.Start == time[0].Start
+		case3 := fixedSubject.End.End == time[len(time) - 1].End
+		isFree = isFree && !(case1 && case2 && case3)
+	}
 
 	return isFree
 }
