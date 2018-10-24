@@ -153,12 +153,21 @@ func checkFree(day string, time []models.TimeSlot) bool {
 
 	for _, fixedSubject := range fixedSubjectData {
 		case1 := day == fixedSubject.Day
-		case2 := fixedSubject.Start.Start == time[0].Start
-		case3 := fixedSubject.End.End == time[len(time) - 1].End
+		case2 := indexOf(fixedSubject.Start.Start, time) != -1
+		case3 := indexOf(fixedSubject.End.Start, time) != -1
 		isFree = isFree && !(case1 && case2 && case3)
 	}
 
 	return isFree
+}
+
+func indexOf(time string, data []models.TimeSlot) int {
+	for k, v := range data {
+		if time == v.Start {
+			return k
+		}
+	}
+	return -1
 }
 
 func calculateFitness(genes []models.Gene) Chromosome {
@@ -225,14 +234,6 @@ func calculateFitness(genes []models.Gene) Chromosome {
 
 	}()
 
-	fitnessGroup.Add(1)
-	go func() {
-		defer fitnessGroup.Done()
-
-		// TODO: implement fixed time for FixedSubject
-
-	}()
-
 	fitnessGroup.Wait()
 	close(resultCh)
 
@@ -266,17 +267,22 @@ func crossover(chromosomeA []models.Gene, chromosomeB []models.Gene) ([]models.G
 
 func mutate(chromosome []models.Gene) []models.Gene {
 	mutateRound := len(chromosome) * 10 / 100
-	for index := 0; index < mutateRound; index++ {
+	index := 0
+	for index < mutateRound {
 		randGeneIndex := rand.Intn(len(chromosome))
 		randRoomIndex := rand.Intn(len(roomData))
 		randDayIndex := rand.Intn(len(DAYS))
 		randTimeSlotIndex := rand.Intn(len(timeSlotData) - chromosome[randGeneIndex].Section.Time/30)
 
-		chromosome[randGeneIndex] = models.Gene{
-			Section: chromosome[randGeneIndex].Section,
-			Room:    roomData[randRoomIndex],
-			Day:     DAYS[randDayIndex],
-			Time:    timeSlotData[randTimeSlotIndex : randTimeSlotIndex+chromosome[randGeneIndex].Section.Time/30],
+		isFree := checkFree(DAYS[randDayIndex], timeSlotData[randTimeSlotIndex:randTimeSlotIndex+chromosome[randGeneIndex].Section.Time/30])
+		if isFree {
+			chromosome[randGeneIndex] = models.Gene{
+				Section: chromosome[randGeneIndex].Section,
+				Room:    roomData[randRoomIndex],
+				Day:     DAYS[randDayIndex],
+				Time:    timeSlotData[randTimeSlotIndex : randTimeSlotIndex+chromosome[randGeneIndex].Section.Time/30],
+			}
+			index++
 		}
 	}
 	return chromosome
