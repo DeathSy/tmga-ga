@@ -218,7 +218,66 @@ func calculateFitness(genes []models.Gene) Chromosome {
 	go func() {
 		defer fitnessGroup.Done()
 
-		// TODO: implement relative fitness with constraints
+		score := 0.0
+		round := 0
+
+		for _, gene := range genes {
+			for _, constraint := range constraintData {
+				isSectionEmpty := len(constraint.Subject.Id.Hex()) == 0
+				isLecturerEmpty := len(constraint.Lecturer.Id.Hex()) == 0
+				if !isSectionEmpty {
+					if constraint.Subject.Id.Hex() == gene.Section.Subject.Id.Hex() {
+						timeStartCase := indexOf(constraint.StartTime.Start, gene.Time) != -1
+						timeEndCase := indexOf(constraint.EndTime.End, gene.Time) != -1
+						dayCase := func() int {
+							for k, v := range constraint.Day {
+								if v == gene.Day {
+									return k
+								}
+							}
+							return -1
+						}() != -1
+
+						if constraint.Wants == (dayCase && (timeStartCase || timeEndCase)) {
+							score++
+						}
+					} else {
+						score++
+					}
+				} else if !isLecturerEmpty {
+					if func() int {
+						id := constraint.Lecturer.Id.Hex()
+						for k, v := range gene.Section.Lecturers {
+							if id == v {
+								return k
+							}
+						}
+						return -1
+					}() != -1 {
+						timeStartCase := indexOf(constraint.StartTime.Start, gene.Time) != -1
+						timeEndCase := indexOf(constraint.EndTime.End, gene.Time) != -1
+						dayCase := func() int {
+							for k, v := range constraint.Day {
+								if v == gene.Day {
+									return k
+								}
+							}
+							return -1
+						}() != -1
+
+						if constraint.Wants == (dayCase && (timeStartCase || timeEndCase)) {
+							score++
+						}
+					} else {
+						score++
+					}
+				}
+
+				round++
+			}
+		}
+
+		resultCh <- score / float64(round)
 
 	}()
 
