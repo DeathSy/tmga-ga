@@ -49,12 +49,17 @@ func (r *ConstraintRepository) FindAll() ([]models.Constraint, error) {
 		},
 		{
 			"$lookup": bson.M{
-				"form":         "TimeSlot",
+				"from":         "TimeSlot",
 				"localField":   "endTimeId",
 				"foreignField": "_id",
 				"as":           "endTime",
 			},
 		},
+		{"$unwind": "$startTime"},
+		{"$unwind": "$endTime"},
+		{"$unwind": "$room"},
+		{"$unwind": "$subject"},
+		{"$unwind": "$lecturer"},
 	}
 
 	err := r.DB.C(r.Collection).Pipe(query).All(&constraints)
