@@ -128,20 +128,24 @@ func generateChromosome() Chromosome {
 	var genes []models.Gene
 	sections := ExpandingSection(sectionData)
 
-	for _, section := range sections {
+	count := 0
+	for count < len(sections) {
 		randRoomIndex := rand.Intn(len(roomData))
 		randDayIndex := rand.Intn(len(DAYS))
-		randTimeSlotIndex := rand.Intn(len(timeSlotData) - section.Time/30)
+		randTimeSlotIndex := rand.Intn(len(timeSlotData) - sections[count].Time/30)
 
-		isFree := checkFree(DAYS[randDayIndex], timeSlotData[randTimeSlotIndex:randTimeSlotIndex+section.Time/30])
-		if isFree {
-			genes = append(
-				genes,
-				models.Gene{
-					Section: section,
-					Room:    roomData[randRoomIndex],
-					Day:     DAYS[randDayIndex],
-					Time:    timeSlotData[randTimeSlotIndex : randTimeSlotIndex+section.Time/30]})
+		if roomData[randRoomIndex].Type.Id.Hex() == sections[count].Type {
+			isFree := checkFree(DAYS[randDayIndex], timeSlotData[randTimeSlotIndex:randTimeSlotIndex+sections[count].Time/30])
+			if isFree {
+				genes = append(
+					genes,
+					models.Gene{
+						Section: sections[count],
+						Room:    roomData[randRoomIndex],
+						Day:     DAYS[randDayIndex],
+						Time:    timeSlotData[randTimeSlotIndex : randTimeSlotIndex+sections[count].Time/30]})
+				count++
+			}
 		}
 	}
 
@@ -184,22 +188,6 @@ func calculateFitness(genes []models.Gene) Chromosome {
 
 		for _, timeBaseGene := range timeBaseChromosome {
 			if len(timeBaseGene) <= 1 {
-				score++
-			}
-			round++
-		}
-
-		resultCh <- score / float64(round)
-	}()
-
-	fitnessGroup.Add(1)
-	go func() {
-		defer fitnessGroup.Done()
-		score := 0.0
-		round := 0
-
-		for _, gene := range genes {
-			if gene.Section.Type == gene.Room.Type.Id.Hex() {
 				score++
 			}
 			round++
@@ -274,15 +262,17 @@ func mutate(chromosome []models.Gene) []models.Gene {
 		randDayIndex := rand.Intn(len(DAYS))
 		randTimeSlotIndex := rand.Intn(len(timeSlotData) - chromosome[randGeneIndex].Section.Time/30)
 
-		isFree := checkFree(DAYS[randDayIndex], timeSlotData[randTimeSlotIndex:randTimeSlotIndex+chromosome[randGeneIndex].Section.Time/30])
-		if isFree {
-			chromosome[randGeneIndex] = models.Gene{
-				Section: chromosome[randGeneIndex].Section,
-				Room:    roomData[randRoomIndex],
-				Day:     DAYS[randDayIndex],
-				Time:    timeSlotData[randTimeSlotIndex : randTimeSlotIndex+chromosome[randGeneIndex].Section.Time/30],
+		if roomData[randRoomIndex].Type.Id.Hex() == chromosome[randGeneIndex].Section.Type {
+			isFree := checkFree(DAYS[randDayIndex], timeSlotData[randTimeSlotIndex:randTimeSlotIndex+chromosome[randGeneIndex].Section.Time/30])
+			if isFree {
+				chromosome[randGeneIndex] = models.Gene{
+					Section: chromosome[randGeneIndex].Section,
+					Room:    roomData[randRoomIndex],
+					Day:     DAYS[randDayIndex],
+					Time:    timeSlotData[randTimeSlotIndex : randTimeSlotIndex+chromosome[randGeneIndex].Section.Time/30],
+				}
+				index++
 			}
-			index++
 		}
 	}
 	return chromosome
