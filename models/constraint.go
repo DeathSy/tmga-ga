@@ -8,6 +8,7 @@ type Constraint struct {
 	Id        bson.ObjectId `bson:"_id,omitempty" json:"_id"`
 	Wants     bool          `bson:"wants" json:"wants"`
 	Room      Room
+	Day       []string
 	Subject   Subject
 	StartTime TimeSlot
 	EndTime   TimeSlot

@@ -55,11 +55,36 @@ func (r *ConstraintRepository) FindAll() ([]models.Constraint, error) {
 				"as":           "endTime",
 			},
 		},
-		{"$unwind": "$startTime"},
-		{"$unwind": "$endTime"},
-		{"$unwind": "$room"},
-		{"$unwind": "$subject"},
-		{"$unwind": "$lecturer"},
+		{
+			"$unwind": bson.M{
+				"path": "$room",
+				"preserveNullAndEmptyArrays": true,
+			},
+		},
+		{
+			"$unwind": bson.M{
+				"path": "$subject",
+				"preserveNullAndEmptyArrays": true,
+			},
+		},
+		{
+			"$unwind": bson.M{
+				"path": "$lecturer",
+				"preserveNullAndEmptyArrays": true,
+			},
+		},
+		{
+			"$unwind": bson.M{
+				"path": "$startTime",
+				"preserveNullAndEmptyArrays": true,
+			},
+		},
+		{
+			"$unwind": bson.M{
+				"path": "$endTime",
+				"preserveNullAndEmptyArrays": true,
+			},
+		},
 	}
 
 	err := r.DB.C(r.Collection).Pipe(query).All(&constraints)
