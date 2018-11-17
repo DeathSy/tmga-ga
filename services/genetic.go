@@ -163,9 +163,7 @@ func checkFree(day string, time []models.TimeSlot) bool {
 	}
 
 	for _, fixedConstraint := range fixedConstraintData {
-		case1 := indexOf(fixedConstraint.StartTime.Start, time) != -1
-		case2 := indexOf(fixedConstraint.EndTime.End, time) != -1
-		case3 := func() int {
+		check := func() int {
 			for k, v := range fixedConstraint.Day {
 				if v == day {
 					return k
@@ -173,7 +171,11 @@ func checkFree(day string, time []models.TimeSlot) bool {
 			}
 			return -1
 		}() != -1
-		isFree = isFree && !(case1 && case2 && case3)
+		if check {
+			case1 := indexOf(fixedConstraint.StartTime.Start, time) != -1
+			case2 := indexOf(fixedConstraint.EndTime.End, time) != -1
+			isFree = isFree && !(case1 && case2)
+		}
 	}
 
 	return isFree
