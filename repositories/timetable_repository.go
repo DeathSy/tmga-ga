@@ -5,6 +5,7 @@ import (
 	"github.com/deathsy/tmga-ga/models"
 	"github.com/globalsign/mgo"
 	"github.com/globalsign/mgo/bson"
+	"time"
 )
 
 type TimetableRepository struct {
@@ -57,6 +58,7 @@ func (r *TimetableRepository) UpdateOrInsert(timetable *models.Timetable) {
 		query,
 		bson.M{
 			"$set": bson.M{
+				"updatedAt":    time.Now(),
 				"fitnessLevel": timetable.FitnessLevel,
 				"Sections":     timetable.Sections,
 			},
