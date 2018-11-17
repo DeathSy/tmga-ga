@@ -2,6 +2,7 @@ package models
 
 import (
 	"github.com/globalsign/mgo/bson"
+	"time"
 )
 
 type Gene struct {
@@ -16,4 +17,5 @@ type Timetable struct {
 	Semester     string        `bson:"semester" json:"semester"`
 	Sections     []Gene        `bson:"Sections" json:"Sections"`
 	FitnessLevel float64       `bson:"fitnessLevel" json:"fitnessLevel"`
+	UpdatedAt    time.Time     `bson:"updatedAt" json:"updatedAt"`
 }
