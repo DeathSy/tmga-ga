@@ -26,6 +26,7 @@ var timeSlotData []models.TimeSlot
 var roomData []models.Room
 var constraintData []models.Constraint
 var fixedSubjectData []models.FixedSubject
+var fixedConstraintData []models.Constraint
 
 var timetableRepo repositories.TimetableRepository
 
@@ -42,7 +43,8 @@ func init() {
 	sectionData, _ = sectionRepo.FindAll()
 	timeSlotData, _ = timeSlotRepo.FindAll()
 	roomData, _ = roomRepo.FindAll()
-	constraintData, _ = constraintRepo.FindAll()
+	constraintData, _ = constraintRepo.FindAll(false)
+	fixedConstraintData, _ = constraintRepo.FindAll(true)
 	fixedSubjectData, _ = fixedSubjectRepo.FindAll()
 
 	sort.SliceStable(timeSlotData, func(i, j int) bool {
@@ -157,6 +159,20 @@ func checkFree(day string, time []models.TimeSlot) bool {
 		case1 := day == fixedSubject.Day
 		case2 := indexOf(fixedSubject.Start.Start, time) != -1
 		case3 := indexOf(fixedSubject.End.Start, time) != -1
+		isFree = isFree && !(case1 && case2 && case3)
+	}
+
+	for _, fixedConstraint := range fixedConstraintData {
+		case1 := indexOf(fixedConstraint.StartTime.Start, time) != -1
+		case2 := indexOf(fixedConstraint.EndTime.End, time) != -1
+		case3 := func() int {
+			for k, v := range fixedConstraint.Day {
+				if v == day {
+					return k
+				}
+			}
+			return -1
+		}() != -1
 		isFree = isFree && !(case1 && case2 && case3)
 	}
 

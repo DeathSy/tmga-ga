@@ -11,10 +11,15 @@ type ConstraintRepository struct {
 	Collection string
 }
 
-func (r *ConstraintRepository) FindAll() ([]models.Constraint, error) {
+func (r *ConstraintRepository) FindAll(required bool) ([]models.Constraint, error) {
 	var constraints []models.Constraint
 
 	query := []bson.M{
+		{
+			"$match": bson.M{
+				"required": required,
+			},
+		},
 		{
 			"$lookup": bson.M{
 				"from":         "Room",
@@ -83,11 +88,6 @@ func (r *ConstraintRepository) FindAll() ([]models.Constraint, error) {
 			"$unwind": bson.M{
 				"path": "$endTime",
 				"preserveNullAndEmptyArrays": true,
-			},
-		},
-		{
-			"$match": bson.M{
-				"required": false,
 			},
 		},
 	}
