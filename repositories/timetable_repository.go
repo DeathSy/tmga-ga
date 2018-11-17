@@ -1,6 +1,7 @@
 package repositories
 
 import (
+	"fmt"
 	"github.com/deathsy/tmga-ga/models"
 	"github.com/globalsign/mgo"
 	"github.com/globalsign/mgo/bson"
@@ -49,6 +50,8 @@ func (r *TimetableRepository) Find(semester string) (models.Timetable, error) {
 }
 
 func (r *TimetableRepository) UpdateOrInsert(timetable *models.Timetable) {
+	fmt.Println("Fitness", timetable.FitnessLevel)
+
 	query := bson.M{"semester": timetable.Semester}
 	_, err := r.DB.C(r.Collection).Upsert(
 		query,

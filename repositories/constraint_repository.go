@@ -85,6 +85,11 @@ func (r *ConstraintRepository) FindAll() ([]models.Constraint, error) {
 				"preserveNullAndEmptyArrays": true,
 			},
 		},
+		{
+			"$match": bson.M{
+				"required": false,
+			},
+		},
 	}
 
 	err := r.DB.C(r.Collection).Pipe(query).All(&constraints)

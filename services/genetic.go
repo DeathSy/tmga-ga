@@ -1,7 +1,6 @@
 package services
 
 import (
-	"fmt"
 	"github.com/deathsy/tmga-ga/config"
 	"github.com/deathsy/tmga-ga/models"
 	"github.com/deathsy/tmga-ga/repositories"
@@ -114,7 +113,6 @@ func (g *Genetic) Start(semester string) Chromosome {
 
 		populationPool = append(populationPool, tmpGeneratePool...)
 		timetableRepo.UpdateOrInsert(transformPopulationToTimetable(populationPool[0], semester))
-		fmt.Println("Fitness", populationPool[0].Fitness)
 	}
 
 	return populationPool[0]
