@@ -293,8 +293,11 @@ func calculateFitness(genes []models.Gene) Chromosome {
 			}
 		}
 
-		resultCh <- score / float64(round)
-
+		if round == 0 {
+			resultCh <- 1
+		} else {
+			resultCh <- score / float64(round)
+		}
 	}()
 
 	fitnessGroup.Wait()
