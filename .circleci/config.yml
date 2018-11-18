@@ -18,11 +18,11 @@ jobs:
       - run:
           name: Deploy to remote host
           command: |
-            ssh centos@54.179.187.112 \
+            ssh centos@13.209.35.6 \
             "sudo docker pull dscythe/tmga-ga && \
             sudo docker container rm -f tmga_ga || true && \
             sudo docker container run \
-            --rm -ditp 6000:9000 --name tmga_ga dscythe/tmga-ga"
+            --rm -ditp 5000:9000 --name tmga_ga dscythe/tmga-ga"
 
 workflows:
   version: 2
