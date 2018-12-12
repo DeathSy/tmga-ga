@@ -1,4 +1,4 @@
-server="13.209.88.3"
+server="13.209.17.174"
 port="27017"
 database="tmgaDB"
 username="tmga-user"
